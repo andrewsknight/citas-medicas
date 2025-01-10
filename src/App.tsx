@@ -5,9 +5,14 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-const calcularFestivos = (año) => {
-  // Función para calcular Pascua (algoritmo de Meeus/Jones/Butcher)
-  const calcularPascua = (año) => {
+interface Revision {
+  semana: number;
+  fecha: string;
+  descripcion: string;
+}
+
+const calcularFestivos = (año: number): string[] => {
+  const calcularPascua = (año: number): Date => {
     const a = año % 19;
     const b = Math.floor(año / 100);
     const c = año % 100;
@@ -25,22 +30,18 @@ const calcularFestivos = (año) => {
     return new Date(año, mes - 1, dia);
   };
 
-  // Función auxiliar para formatear fechas a YYYY-MM-DD
-  const formatearFecha = (fecha) => {
+  const formatearFecha = (fecha: Date): string => {
     return fecha.toISOString().split('T')[0];
   };
 
-  // Obtener la fecha de Pascua
   const pascua = calcularPascua(año);
   
-  // Calcular Jueves y Viernes Santo (2 y 1 días antes de Pascua)
   const juevesSanto = new Date(pascua);
   juevesSanto.setDate(pascua.getDate() - 3);
   
   const viernesSanto = new Date(pascua);
   viernesSanto.setDate(pascua.getDate() - 2);
 
-  // Fechas fijas
   const festivos = [
     new Date(año, 0, 1),   // 1 de enero
     new Date(año, 0, 6),   // 6 de enero
@@ -55,51 +56,36 @@ const calcularFestivos = (año) => {
     new Date(año, 11, 25), // 25 de diciembre
   ];
 
-  // Convertir todas las fechas al formato YYYY-MM-DD
   return festivos.map(fecha => formatearFecha(fecha));
 };
 
-// En tu componente, reemplaza la constante VACATION_DATES con:
 const VACATION_DATES = (() => {
-  // Obtener el año actual y el siguiente
   const añoActual = new Date().getFullYear();
   const añoSiguiente = añoActual + 1;
-  
-  // Combinar festivos de ambos años
   return [...calcularFestivos(añoActual), ...calcularFestivos(añoSiguiente)];
 })();
 
-const VACATION_RANGES = [
-  ["2025-12-24", "2025-12-31"],  // Navidad
-];
+const CalculadoraRevisiones: React.FC = () => {
+  const [fur, setFur] = useState<string>('');
+  const [revisiones, setRevisiones] = useState<Revision[]>([]);
+  const [error, setError] = useState<string>('');
+  const contentRef = useRef<HTMLDivElement>(null);
 
-const CalculadoraRevisiones = () => {
-  const [fur, setFur] = useState('');
-  const [revisiones, setRevisiones] = useState([]);
-  const [error, setError] = useState('');
-  const contentRef = useRef(null);
-
-  const parseDate = (dateStr) => {
+  const parseDate = (dateStr: string): Date => {
     const [year, month, day] = dateStr.split('-').map(Number);
     return new Date(year, month - 1, day);
   };
 
-  const formatDate = (date) => {
+  const formatDate = (date: Date): string => {
     return date.toISOString().split('T')[0];
   };
 
-  const isVacation = (date) => {
+  const isVacation = (date: Date): boolean => {
     const dateStr = formatDate(date);
-    if (VACATION_DATES.includes(dateStr)) return true;
-
-    return VACATION_RANGES.some(([start, end]) => {
-      const startDate = parseDate(start);
-      const endDate = parseDate(end);
-      return date >= startDate && date <= endDate;
-    });
+    return VACATION_DATES.includes(dateStr);
   };
 
-  const siguienteDiaHabil = (fecha) => {
+  const siguienteDiaHabil = (fecha: Date): Date => {
     let currentDate = new Date(fecha);
     while (
       currentDate.getDay() === 0 ||
@@ -111,14 +97,14 @@ const CalculadoraRevisiones = () => {
     return currentDate;
   };
 
-  const calcularRevisiones = (e) => {
+  const calcularRevisiones = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
     try {
       const furDate = parseDate(fur);
       
-      const revisiones = [
+      const revisiones: [number, string][] = [
         [8, "Nueva obstétrica + ecografía + consulta de matrona"],
         [12, "Revisión obstetricia + ecografía semana 12 + screening primer trimestre + screening preeclampsia"],
         [16, "Consulta de matrona"],
@@ -148,7 +134,7 @@ const CalculadoraRevisiones = () => {
     }
   };
 
-  const downloadPDF = async () => {
+  const downloadPDF = async (): Promise<void> => {
     if (!contentRef.current) return;
 
     try {
@@ -197,7 +183,7 @@ const CalculadoraRevisiones = () => {
                   type="date"
                   value={fur}
                   onChange={(e) => setFur(e.target.value)}
-                  className="w-full p-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-full p-3 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-800 bg-white"
                   required
                 />
               </div>
