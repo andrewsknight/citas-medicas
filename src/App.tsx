@@ -11,7 +11,20 @@ interface Revision {
   descripcion: string;
 }
 
+// Función para formatear una fecha en YYYY-MM-DD
+const formatearFecha = (fecha: Date): string => {
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+};
+
+// Función para crear un festivo específico
+const crearFestivo = (año: number, mes: number, dia: number): string => {
+  const fecha = new Date(año, mes - 1, dia);
+  return formatearFecha(fecha);
+};
+
+// Lista de festivos para un año específico
 const calcularFestivos = (año: number): string[] => {
+  // Cálculo de Pascua (Algoritmo de Meeus/Jones/Butcher)
   const calcularPascua = (año: number): Date => {
     const a = año % 19;
     const b = Math.floor(año / 100);
@@ -30,12 +43,9 @@ const calcularFestivos = (año: number): string[] => {
     return new Date(año, mes - 1, dia);
   };
 
-  const formatearFecha = (fecha: Date): string => {
-    return fecha.toISOString().split('T')[0];
-  };
-
   const pascua = calcularPascua(año);
   
+  // Jueves y Viernes Santo
   const juevesSanto = new Date(pascua);
   juevesSanto.setDate(pascua.getDate() - 3);
   
@@ -43,26 +53,30 @@ const calcularFestivos = (año: number): string[] => {
   viernesSanto.setDate(pascua.getDate() - 2);
 
   const festivos = [
-    new Date(año, 0, 1),   // 1 de enero
-    new Date(año, 0, 6),   // 6 de enero
-    juevesSanto,           // Jueves Santo
-    viernesSanto,          // Viernes Santo
-    new Date(año, 4, 1),   // 1 de mayo
-    new Date(año, 7, 15),  // 15 de agosto
-    new Date(año, 9, 12),  // 12 de octubre
-    new Date(año, 10, 1),  // 1 de noviembre
-    new Date(año, 11, 6),  // 6 de diciembre
-    new Date(año, 11, 8),  // 8 de diciembre
-    new Date(año, 11, 25), // 25 de diciembre
+    crearFestivo(año, 1, 1),   // Año Nuevo
+    crearFestivo(año, 1, 6),   // Reyes
+    formatearFecha(juevesSanto),    // Jueves Santo
+    formatearFecha(viernesSanto),   // Viernes Santo
+    crearFestivo(año, 5, 1),   // Día del Trabajo
+    crearFestivo(año, 8, 15),  // Asunción
+    crearFestivo(año, 10, 12), // Fiesta Nacional
+    crearFestivo(año, 11, 1),  // Todos los Santos
+    crearFestivo(año, 12, 6),  // Constitución
+    crearFestivo(año, 12, 8),  // Inmaculada
+    crearFestivo(año, 12, 25), // Navidad
   ];
 
-  return festivos.map(fecha => formatearFecha(fecha));
+  console.log(`Festivos generados para ${año}:`, festivos);
+  return festivos;
 };
 
+// Generar lista completa de festivos
 const VACATION_DATES = (() => {
   const añoActual = new Date().getFullYear();
   const añoSiguiente = añoActual + 1;
-  return [...calcularFestivos(añoActual), ...calcularFestivos(añoSiguiente)];
+  const todosLosFestivos = [...calcularFestivos(añoActual), ...calcularFestivos(añoSiguiente)];
+  console.log('Lista completa de festivos:', todosLosFestivos);
+  return todosLosFestivos;
 })();
 
 const CalculadoraRevisiones: React.FC = () => {
@@ -73,36 +87,49 @@ const CalculadoraRevisiones: React.FC = () => {
 
   const parseDate = (dateStr: string): Date => {
     const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    const date = new Date(year, month - 1, day);
+    date.setHours(12, 0, 0, 0);
+    return date;
   };
 
   const formatDate = (date: Date): string => {
-    return date.toISOString().split('T')[0];
+    return formatearFecha(date);
   };
 
   const isVacation = (date: Date): boolean => {
     const dateStr = formatDate(date);
-    return VACATION_DATES.includes(dateStr);
+    console.log('Verificando festivo:', dateStr, 'Lista:', VACATION_DATES);
+    const result = VACATION_DATES.includes(dateStr);
+    console.log('¿Es festivo?:', result);
+    return result;
   };
 
   const siguienteDiaHabil = (fecha: Date): Date => {
-    let currentDate = new Date(fecha);
+    console.log('======= Buscando siguiente día hábil =======');
+    console.log('Fecha inicial:', formatDate(fecha));
+    
+    let currentDate = new Date(fecha.getTime());
     while (
-      currentDate.getDay() === 0 ||
-      currentDate.getDay() === 6 ||
-      isVacation(currentDate)
+      currentDate.getDay() === 0 || // Domingo
+      currentDate.getDay() === 6 || // Sábado
+      isVacation(currentDate)       // Festivo
     ) {
       currentDate.setDate(currentDate.getDate() + 1);
+      console.log('Avanzando a:', formatDate(currentDate));
     }
+    
+    console.log('Día hábil encontrado:', formatDate(currentDate));
     return currentDate;
   };
 
   const calcularRevisiones = (e: React.FormEvent<HTMLFormElement>) => {
+    console.log('=============== Iniciando cálculo de revisiones ===============');
     e.preventDefault();
     setError('');
-
+  
     try {
       const furDate = parseDate(fur);
+      console.log('FUR seleccionada:', formatDate(furDate));
       
       const revisiones: [number, string][] = [
         [8, "Nueva obstétrica + ecografía + consulta de matrona"],
@@ -115,25 +142,31 @@ const CalculadoraRevisiones: React.FC = () => {
         [39, "Monitorización"],
         [40, "Revisión obstetricia + ecografía obstétrica + monitorización"]
       ];
-
+  
       const calculadas = revisiones.map(([semanas, descripcion]) => {
-        const fechaRevision = new Date(furDate);
-        fechaRevision.setDate(fechaRevision.getDate() + (semanas * 7));
-        const fechaHabil = siguienteDiaHabil(fechaRevision);
+        console.log('\n------- Calculando revisión semana', semanas, '-------');
+        
+        const fechaBase = new Date(furDate.getTime());
+        fechaBase.setDate(fechaBase.getDate() + (semanas * 7));
+        console.log('Fecha base calculada:', formatDate(fechaBase));
+        
+        const fechaFinal = siguienteDiaHabil(fechaBase);
+        console.log('Fecha final ajustada:', formatDate(fechaFinal));
         
         return {
           semana: semanas,
-          fecha: formatDate(fechaHabil),
+          fecha: formatDate(fechaFinal),
           descripcion
         };
       });
-
+  
       setRevisiones(calculadas);
     } catch (err) {
+      console.error('Error:', err);
       setError('Error al calcular las revisiones. Por favor, verifica la fecha.');
     }
   };
-
+  
   const downloadPDF = async (): Promise<void> => {
     if (!contentRef.current) return;
 
