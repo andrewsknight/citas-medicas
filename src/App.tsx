@@ -198,26 +198,108 @@ const CalculadoraRevisiones: React.FC = () => {
 
   const downloadPDF = async (): Promise<void> => {
     if (!contentRef.current) return;
-
+  
     try {
-      const canvas = await html2canvas(contentRef.current, {
+      // Configuración del elemento a capturar
+      const element = contentRef.current;
+      const originalPadding = element.style.padding;
+      element.style.padding = '20px'; // Añadir padding temporal
+  
+      // Crear el canvas con mejor calidad y escala
+      const canvas = await html2canvas(element, {
         scale: 2,
         logging: false,
-        useCORS: true
+        useCORS: true,
+        backgroundColor: '#FFFFFF',
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        allowTaint: true,
+        onclone: (clonedDoc) => {
+          // Puedes manipular el DOM clonado aquí si es necesario
+          const clonedElement = clonedDoc.querySelector('.max-w-4xl');
+          if (clonedElement) {
+            clonedElement.style.padding = '20px';
+          }
+        }
       });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
+  
+      // Restaurar el padding original
+      element.style.padding = originalPadding;
+  
+      // Obtener los datos de la imagen
+      const imgData = canvas.toDataURL('image/png', 1.0);
+  
+      // Crear el PDF
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+  
+      // Obtener dimensiones
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+  
+      // Calcular dimensiones y ratio
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      const imgY = 30;
-
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      const ratio = Math.min(
+        (pdfWidth - 40) / imgWidth, // 20mm margen a cada lado
+        (pdfHeight - 40) / imgHeight // 20mm margen arriba y abajo
+      );
+  
+      // Calcular dimensiones finales
+      const finalWidth = imgWidth * ratio;
+      const finalHeight = imgHeight * ratio;
+  
+      // Calcular posición centrada
+      const x = (pdfWidth - finalWidth) / 2;
+      const y = 20; // Margen superior fijo de 20mm
+  
+      // Calcular número de páginas necesarias
+      const pageHeight = pdfHeight - 40; // Altura útil de página (con márgenes)
+      const pageCount = Math.ceil(finalHeight / pageHeight);
+  
+      // Añadir contenido a las páginas
+      for (let i = 0; i < pageCount; i++) {
+        if (i > 0) {
+          pdf.addPage();
+        }
+  
+        // Calcular la porción de imagen a mostrar en esta página
+        const sourceY = (i * pageHeight / ratio);
+        const sourceHeight = Math.min(pageHeight / ratio, imgHeight - sourceY);
+        const destHeight = sourceHeight * ratio;
+  
+        pdf.addImage(
+          imgData,
+          'PNG',
+          x,
+          y,
+          finalWidth,
+          finalHeight,
+          undefined,
+          'FAST',
+          0,
+          i * pageHeight / ratio,
+          imgWidth,
+          sourceHeight
+        );
+  
+        // Añadir número de página
+        pdf.setFontSize(8);
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(
+          `Página ${i + 1} de ${pageCount}`,
+          pdfWidth / 2,
+          pdfHeight - 10,
+          { align: 'center' }
+        );
+      }
+  
+      // Guardar el PDF
       pdf.save('calendario-revisiones.pdf');
+  
     } catch (err) {
       console.error('Error al generar PDF:', err);
     }
