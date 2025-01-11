@@ -9,6 +9,14 @@ interface Revision {
   semana: number;
   fecha: string;
   descripcion: string;
+  rango?: {
+    min: string;
+    max: string;
+    minSemana: number;
+    minDias: number;
+    maxSemana: number;
+    maxDias: number;
+  };
 }
 
 // Función para formatear una fecha en YYYY-MM-DD
@@ -92,12 +100,8 @@ const CalculadoraRevisiones: React.FC = () => {
     return date;
   };
 
-  const formatDate = (date: Date): string => {
-    return formatearFecha(date);
-  };
-
   const isVacation = (date: Date): boolean => {
-    const dateStr = formatDate(date);
+    const dateStr = formatearFecha(date);
     console.log('Verificando festivo:', dateStr, 'Lista:', VACATION_DATES);
     const result = VACATION_DATES.includes(dateStr);
     console.log('¿Es festivo?:', result);
@@ -106,7 +110,7 @@ const CalculadoraRevisiones: React.FC = () => {
 
   const siguienteDiaHabil = (fecha: Date): Date => {
     console.log('======= Buscando siguiente día hábil =======');
-    console.log('Fecha inicial:', formatDate(fecha));
+    console.log('Fecha inicial:', formatearFecha(fecha));
     
     let currentDate = new Date(fecha.getTime());
     while (
@@ -115,10 +119,10 @@ const CalculadoraRevisiones: React.FC = () => {
       isVacation(currentDate)       // Festivo
     ) {
       currentDate.setDate(currentDate.getDate() + 1);
-      console.log('Avanzando a:', formatDate(currentDate));
+      console.log('Avanzando a:', formatearFecha(currentDate));
     }
     
-    console.log('Día hábil encontrado:', formatDate(currentDate));
+    console.log('Día hábil encontrado:', formatearFecha(currentDate));
     return currentDate;
   };
 
@@ -129,34 +133,59 @@ const CalculadoraRevisiones: React.FC = () => {
   
     try {
       const furDate = parseDate(fur);
-      console.log('FUR seleccionada:', formatDate(furDate));
+      console.log('FUR seleccionada:', formatearFecha(furDate));
       
-      const revisiones: [number, string][] = [
-        [8, "Nueva obstétrica + ecografía + consulta de matrona"],
-        [12, "Revisión obstetricia + ecografía semana 12 + screening primer trimestre + screening preeclampsia"],
-        [16, "Consulta de matrona"],
-        [20, "Revisión obstetricia + ecografía semana 20"],
-        [26, "Revisión obstetricia + ecografía obstétrica + analítica de segundo trimestre"],
-        [32, "Consulta de matrona"],
-        [36, "Revisión obstetricia + ecografía obstétrica + analítica de tercer trimestre + anestesia + consulta de matrona"],
-        [39, "Monitorización"],
-        [40, "Revisión obstetricia + ecografía obstétrica + monitorización"]
+      const revisiones: Array<[number, string, { minSemana?: number; minDias?: number; maxSemana?: number; maxDias?: number }]> = [
+        [8, "Nueva obstétrica + ecografía + consulta de matrona", {}],
+        [12, "Revisión obstetricia + ecografía semana 12 + screening primer trimestre + screening preeclampsia", 
+            { minSemana: 11, minDias: 2, maxSemana: 13, maxDias: 6 }],
+        [16, "Consulta de matrona", {}],
+        [20, "Revisión obstetricia + ecografía semana 20", 
+            { minSemana: 19, minDias: 0, maxSemana: 22, maxDias: 6 }],
+        [26, "Revisión obstetricia + ecografía obstétrica + analítica de segundo trimestre", 
+            { minSemana: 25, minDias: 0, maxSemana: 27, maxDias: 0 }],
+        [32, "Consulta de matrona", {}],
+        [36, "Revisión obstetricia + ecografía obstétrica + analítica de tercer trimestre + anestesia + consulta de matrona", 
+            { minSemana: 36, minDias: 0, maxSemana: 37, maxDias: 0 }],
+        [39, "Monitorización", {}],
+        [40, "Revisión obstetricia + ecografía obstétrica + monitorización", {}]
       ];
   
-      const calculadas = revisiones.map(([semanas, descripcion]) => {
+      const calculadas = revisiones.map(([semanas, descripcion, rango]) => {
         console.log('\n------- Calculando revisión semana', semanas, '-------');
         
         const fechaBase = new Date(furDate.getTime());
         fechaBase.setDate(fechaBase.getDate() + (semanas * 7));
-        console.log('Fecha base calculada:', formatDate(fechaBase));
+        console.log('Fecha base calculada:', formatearFecha(fechaBase));
         
         const fechaFinal = siguienteDiaHabil(fechaBase);
-        console.log('Fecha final ajustada:', formatDate(fechaFinal));
+        console.log('Fecha final ajustada:', formatearFecha(fechaFinal));
+
+        // Calcular fechas límite si existen rangos
+        let fechaMinima = null;
+        let fechaMaxima = null;
+        if (rango.minSemana !== undefined) {
+          fechaMinima = new Date(furDate.getTime());
+          const diasMinimos = (rango.minSemana * 7) + (rango.minDias || 0);
+          fechaMinima.setDate(fechaMinima.getDate() + diasMinimos);
+          
+          fechaMaxima = new Date(furDate.getTime());
+          const diasMaximos = (rango.maxSemana * 7) + (rango.maxDias || 0);
+          fechaMaxima.setDate(fechaMaxima.getDate() + diasMaximos);
+        }
         
         return {
           semana: semanas,
-          fecha: formatDate(fechaFinal),
-          descripcion
+          fecha: formatearFecha(fechaFinal),
+          descripcion,
+          rango: rango.minSemana !== undefined ? {
+            min: formatearFecha(fechaMinima!),
+            max: formatearFecha(fechaMaxima!),
+            minSemana: rango.minSemana,
+            minDias: rango.minDias || 0,
+            maxSemana: rango.maxSemana!,
+            maxDias: rango.maxDias || 0
+          } : undefined
         };
       });
   
@@ -166,7 +195,7 @@ const CalculadoraRevisiones: React.FC = () => {
       setError('Error al calcular las revisiones. Por favor, verifica la fecha.');
     }
   };
-  
+
   const downloadPDF = async (): Promise<void> => {
     if (!contentRef.current) return;
 
@@ -251,7 +280,7 @@ const CalculadoraRevisiones: React.FC = () => {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm text-red-700">{error}</p>
                 </div>
               </div>
             </div>
@@ -274,10 +303,29 @@ const CalculadoraRevisiones: React.FC = () => {
                         <span className="text-purple-700 font-bold text-lg">S{revision.semana}</span>
                       </div>
                       <div className="flex-1">
-                        <p className="font-semibold text-purple-900 text-lg mb-1">
-                          {format(new Date(revision.fecha), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
-                        </p>
-                        <p className="text-gray-600">{revision.descripcion}</p>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-purple-900 text-lg mb-1">
+                              {format(new Date(revision.fecha), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
+                            </p>
+                            <p className="text-gray-600">{revision.descripcion}</p>
+                          </div>
+                          {revision.rango && (
+                            <div className="ml-4 text-sm bg-purple-50 p-3 rounded-lg border border-purple-100">
+                              <p className="font-medium text-purple-800 mb-1">Rango permitido:</p>
+                              <p className="text-purple-700">
+                                Semana {revision.rango.minSemana}
+                                {revision.rango.minDias > 0 ? `+${revision.rango.minDias}` : ''} a {' '}
+                                Semana {revision.rango.maxSemana}
+                                {revision.rango.maxDias > 0 ? `+${revision.rango.maxDias}` : ''}
+                              </p>
+                              <div className="mt-1 text-gray-600">
+                                <p>Desde: {format(new Date(revision.rango.min), "d 'de' MMMM", { locale: es })}</p>
+                                <p>Hasta: {format(new Date(revision.rango.max), "d 'de' MMMM", { locale: es })}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
