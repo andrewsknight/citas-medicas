@@ -271,7 +271,6 @@ const CalculadoraRevisiones: React.FC = () => {
   
         // Calcular la porción de imagen a mostrar en esta página
         const sourceY = (i * pageHeight / ratio);
-        const sourceHeight = Math.min(pageHeight / ratio, imgHeight - sourceY);
   
         pdf.addImage(
           imgData, // Data URI de la imagen
