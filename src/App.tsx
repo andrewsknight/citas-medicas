@@ -170,8 +170,10 @@ const CalculadoraRevisiones: React.FC = () => {
           fechaMinima.setDate(fechaMinima.getDate() + diasMinimos);
           
           fechaMaxima = new Date(furDate.getTime());
-          const diasMaximos = (rango.maxSemana * 7) + (rango.maxDias || 0);
+        
+          const diasMaximos = ((rango.maxSemana ?? 0) * 7) + (rango.maxDias || 0);
           fechaMaxima.setDate(fechaMaxima.getDate() + diasMaximos);
+          
         }
         
         return {
