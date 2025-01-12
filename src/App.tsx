@@ -309,12 +309,13 @@ const CalculadoraRevisiones: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-white py-12 px-4 sm:px-6 lg:px-8">
       <div ref={contentRef} className="max-w-4xl mx-auto">
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-purple-100">
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <Baby className="w-8 h-8 text-purple-600" />
-            <h1 className="text-4xl font-bold text-purple-800">
-              Calculadora de Revisiones Obstétricas
-            </h1>
-          </div>
+        <div className="flex flex-col sm:flex-row items-center gap-3 mb-8">
+  <Baby className="w-8 h-8 sm:w-6 sm:h-6 text-purple-600" />
+  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-purple-800 text-center sm:text-left">
+    Calculadora de Revisiones Obstétricas
+  </h1>
+</div>
+
 
           <form onSubmit={calcularRevisiones} className="mb-10">
             <div className="flex flex-col md:flex-row gap-6 items-end">
