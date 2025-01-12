@@ -218,10 +218,11 @@ const CalculadoraRevisiones: React.FC = () => {
         allowTaint: true,
         onclone: (clonedDoc) => {
           // Puedes manipular el DOM clonado aquí si es necesario
-          const clonedElement = clonedDoc.querySelector('.max-w-4xl');
+          const clonedElement = clonedDoc.querySelector('.max-w-4xl') as HTMLElement | null;
           if (clonedElement) {
             clonedElement.style.padding = '20px';
           }
+          
         }
       });
   
@@ -271,22 +272,18 @@ const CalculadoraRevisiones: React.FC = () => {
         // Calcular la porción de imagen a mostrar en esta página
         const sourceY = (i * pageHeight / ratio);
         const sourceHeight = Math.min(pageHeight / ratio, imgHeight - sourceY);
-        const destHeight = sourceHeight * ratio;
   
         pdf.addImage(
-          imgData,
-          'PNG',
-          x,
-          y,
-          finalWidth,
-          finalHeight,
-          undefined,
-          'FAST',
-          0,
-          i * pageHeight / ratio,
-          imgWidth,
-          sourceHeight
+          imgData, // Data URI de la imagen
+          'PNG',   // Formato de imagen
+          x,       // Coordenada x
+          y,       // Coordenada y
+          finalWidth, // Ancho de la imagen
+          finalHeight, // Altura de la imagen
+          undefined, // Nombre opcional
+          'FAST'  // Método de renderizado
         );
+        
   
         // Añadir número de página
         pdf.setFontSize(8);
